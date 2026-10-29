@@ -16,6 +16,7 @@ Teammates: add your routes in the clearly marked sections at the bottom.
 import os
 import sqlite3
 import secrets
+import re
 
 from flask import (
     Flask,
@@ -267,8 +268,70 @@ def get_comments():
 
 # ===========================================================================
 # NEVA ILDEM  -  SQL Injection
-# TODO: add your vulnerable + mitigated routes here.
 # ===========================================================================
+# --- Neva's SQL injection: vulnerable + mitigated login --------------------
+NEVA_RESULT_COLS = ["username", "email", "ssn", "balance"]
+NEVA_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{1,32}$")
+
+
+def _rows_to_dicts(rows):
+    return [{col: row[col] for col in NEVA_RESULT_COLS} for row in rows]
+
+
+@app.route("/neva/vulnerable", methods=["GET", "POST"])
+def neva_vulnerable():
+    """VULNERABLE login: user input is concatenated into the SQL string."""
+    result = None
+    executed_query = None
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        query = (
+            "SELECT username, email, ssn, balance FROM users "
+            "WHERE username = '" + username + "' AND password = '" + password + "'"
+        )
+        executed_query = query
+        print(f"[NEVA][SQLi] executing: {query}")
+        conn = get_db()
+        try:
+            rows = conn.execute(query).fetchall()
+            result = _rows_to_dicts(rows)
+        except Exception as exc:
+            error = str(exc)
+        finally:
+            conn.close()
+    return render_template(
+        "neva_vulnerable.html",
+        result=result,
+        executed_query=executed_query,
+        error=error,
+        cols=NEVA_RESULT_COLS,
+    )
+
+
+@app.route("/neva/mitigated", methods=["GET", "POST"])
+def neva_mitigated():
+    """MITIGATED login: input validation + parameterized query (find_user)."""
+    result = None
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if not NEVA_USERNAME_RE.match(username):
+            error = "Username must be 1-32 letters, numbers, or underscores."
+        else:
+            user = find_user(username, password)
+            if user:
+                result = [{col: user[col] for col in NEVA_RESULT_COLS}]
+            else:
+                error = "Invalid credentials."
+    return render_template(
+        "neva_mitigated.html",
+        result=result,
+        error=error,
+        cols=NEVA_RESULT_COLS,
+    )
 
 
 if __name__ == "__main__":

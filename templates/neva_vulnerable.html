@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neva &mdash; Vulnerable (SQL Injection)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    .banner { background: #fdecea; border-left: 5px solid #c0392b; padding: .6rem 1rem; border-radius: 6px; }
+    input { padding: .4rem; margin: .2rem 0; }
+    button { padding: .4rem .8rem; }
+    pre { background: #f4f4f4; padding: .8rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+    table { border-collapse: collapse; margin-top: .5rem; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: .35rem .6rem; text-align: left; font-size: .95rem; }
+    th { background: #f4f4f4; }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+    a { color: #2c3e50; }
+    .hint { color: #777; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; Home</a> | <a href="/neva/mitigated">See mitigated version</a></p>
+  <div class="banner"><strong>VULNERABLE.</strong> Login input is concatenated
+     directly into the SQL query.</div>
+
+  <h2>Log in</h2>
+  <form method="POST">
+    <input name="username" placeholder="username" value="alice"><br>
+    <input name="password" type="password" placeholder="password"><br>
+    <button type="submit">Log in</button>
+  </form>
+  <p class="hint">Normal login: <code>alice / password123</code>. Injection to try
+     in the <em>username</em> box (any password):<br>
+     <code>alice' --</code> (logs in as alice without her password)<br>
+     <code>' OR 1=1 --</code> (returns every user's record, SSNs and all)</p>
+
+  {% if executed_query %}
+    <h3>Query that ran</h3>
+    <pre>{{ executed_query }}</pre>
+  {% endif %}
+
+  {% if error %}
+    <h3>Database error</h3>
+    <pre>{{ error }}</pre>
+    <p class="hint">An error leaking from user input is itself a sign the input
+       is being parsed as SQL.</p>
+  {% elif result is not none %}
+    <h3>Rows returned ({{ result|length }})</h3>
+    {% if result %}
+      <table>
+        <tr>{% for col in cols %}<th>{{ col }}</th>{% endfor %}</tr>
+        {% for row in result %}
+          <tr>{% for col in cols %}<td>{{ row[col] }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </table>
+      <p class="hint">Note the <code>ssn</code> and <code>balance</code> columns:
+         a successful injection leaks sensitive data for users you never
+         authenticated as.</p>
+    {% else %}
+      <p>No matching user.</p>
+    {% endif %}
+  {% endif %}
+</body>
+</html>
