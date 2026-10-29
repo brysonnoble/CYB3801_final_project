@@ -90,6 +90,7 @@ def init_db():
     seed = [
         ("alice", "password123", "alice@example.com", "123-45-6789", "$12,430.55"),
         ("bob", "hunter2", "bob@example.com", "987-65-4321", "$2,110.08"),
+        ("carol", "letmein", "carol@example.com", "555-12-3456", "$890.00"),
     ]
     for username, password, email, ssn, balance in seed:
         cur.execute(
@@ -261,9 +262,129 @@ def get_comments():
 
 
 # ===========================================================================
-# KATHERINE KENNEDY  -  Insecure Direct Object Reference (IDOR)
-# TODO: add your vulnerable + mitigated routes here.
+# KATHERINE KENNEDY - Insecure Direct Object Reference (IDOR)
+# Vulnerability: the server checks that you are LOGGED IN but never checks
+#   that the record you asked for BELONGS to you. Changing the ID in the URL
+#   (/katherine/vulnerable/profile/1 -> /2) exposes another user's data.
+# Mitigation: a server-side authorization (ownership) check on every request.
 # ===========================================================================
+
+KK_COOKIE = "kk_sid"   # my own login cookie, separate from Bryson's "sid"
+
+
+def kk_current_user():
+    """Return the logged-in user (from the server-side session) or None."""
+    sid = request.cookies.get(KK_COOKIE)
+    if not sid:
+        return None
+    conn = get_db()
+    row = conn.execute(
+        "SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.sid = ?",
+        (sid,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def kk_get_user(user_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def kk_reply(message, status):
+    """Small helper so errors work for both the browser and the demo page."""
+    if request.args.get("format") == "json":
+        return jsonify({"error": message}), status
+    return render_template("katherine_profile.html", mode=request.path.split("/")[2],
+                           error=message, status=status, viewer=kk_current_user(),
+                           target=None, is_other=False), status
+
+
+def kk_profile_response(mode, viewer, target):
+    if request.args.get("format") == "json":
+        return jsonify({
+            "id": target["id"], "username": target["username"],
+            "email": target["email"], "ssn": target["ssn"], "balance": target["balance"],
+        })
+    return render_template("katherine_profile.html", mode=mode, viewer=viewer,
+                           target=target, is_other=(target["id"] != viewer["id"]),
+                           error=None, status=200)
+
+
+# --- Demo / login page -------------------------------------------------------
+@app.route("/katherine")
+def katherine_home():
+    return render_template("katherine.html", user=kk_current_user(),
+                           error=request.args.get("error"))
+
+
+@app.route("/katherine/login", methods=["POST"])
+def katherine_login():
+    user = find_user(request.form.get("username", ""), request.form.get("password", ""))
+    if not user:
+        return redirect("/katherine?error=1")
+    sid = secrets.token_urlsafe(32)
+    conn = get_db()
+    conn.execute("INSERT INTO sessions (sid, user_id) VALUES (?, ?)", (sid, user["id"]))
+    conn.commit()
+    conn.close()
+    resp = make_response(redirect("/katherine"))
+    resp.set_cookie(KK_COOKIE, sid, httponly=True, samesite="Strict")
+    return resp
+
+
+@app.route("/katherine/logout")
+def katherine_logout():
+    sid = request.cookies.get(KK_COOKIE)
+    if sid:
+        conn = get_db()
+        conn.execute("DELETE FROM sessions WHERE sid = ?", (sid,))
+        conn.commit()
+        conn.close()
+    resp = make_response(redirect("/katherine"))
+    resp.delete_cookie(KK_COOKIE)
+    return resp
+
+
+# --- Vulnerable demo ---------------------------------------------------------
+@app.route("/katherine/vulnerable/profile/<int:user_id>")
+def katherine_vulnerable_profile(user_id):
+    viewer = kk_current_user()
+    if not viewer:
+        return kk_reply("Not logged in.", 401)
+
+    target = kk_get_user(user_id)
+    if not target:
+        return kk_reply("No such user.", 404)
+
+    print(f"[KATHERINE][IDOR] {viewer['username']} (id {viewer['id']}) "
+          f"requested profile id {user_id} -> SERVED")
+
+    # VULNERABILITY: we know WHO the viewer is, but never check that
+    # target['id'] == viewer['id']. Any logged-in user can read any profile
+    # just by changing the number in the URL.
+    return kk_profile_response("vulnerable", viewer, target)
+
+
+# --- Mitigated demo ----------------------------------------------------------
+@app.route("/katherine/mitigated/profile/<int:user_id>")
+def katherine_mitigated_profile(user_id):
+    viewer = kk_current_user()
+    if not viewer:
+        return kk_reply("Not logged in.", 401)
+
+    # FIX: server-side authorization check. The ID in the URL is NOT trusted;
+    # it must match the identity stored in the server-side session. We check
+    # this BEFORE touching the database, so other users' records are never
+    # even loaded (and we reveal nothing about which IDs exist).
+    if user_id != viewer["id"]:
+        print(f"[KATHERINE][IDOR] {viewer['username']} (id {viewer['id']}) "
+              f"requested profile id {user_id} -> BLOCKED (403)")
+        return kk_reply("Forbidden: you are not authorized to view this profile.", 403)
+
+    return kk_profile_response("mitigated", viewer, viewer)
 
 
 # ===========================================================================

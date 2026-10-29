@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>IDOR demo - Katherine Kennedy</title>
+<style>
+ body{font-family:system-ui,sans-serif;max-width:980px;margin:32px auto;padding:0 16px;color:#1b1f24}
+ .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+ .col{border:2px solid;border-radius:8px;padding:12px 16px}
+ .vuln{border-color:#c0392b}.fix{border-color:#1e8449}
+ h3{margin:0 0 8px}.vuln h3{color:#c0392b}.fix h3{color:#1e8449}
+ pre{background:#f4f5f7;padding:10px;border-radius:6px;min-height:120px;white-space:pre-wrap;word-break:break-word;font-size:13px}
+ .bar{background:#eef3fb;padding:10px 14px;border-radius:6px}
+ button{padding:6px 14px;cursor:pointer}
+ input{padding:5px;margin-right:6px}
+ code{background:#eef;padding:1px 5px;border-radius:4px}
+ .err{color:#c0392b}
+</style></head><body>
+<h1>IDOR: Before &amp; After</h1>
+<p><i>Insecure Direct Object Reference</i> &mdash; changing an ID in the URL to read someone else's data.</p>
+
+{% if not user %}
+  <div class="bar">
+    <form method="post" action="/katherine/login">
+      <b>Log in:</b>
+      <input name="username" placeholder="username" value="alice">
+      <input name="password" type="password" placeholder="password" value="password123">
+      <button>Log in</button>
+      {% if error %}<span class="err">Invalid credentials</span>{% endif %}
+    </form>
+    <small>Demo accounts: alice / password123, bob / hunter2, carol / letmein</small>
+  </div>
+{% else %}
+  <div class="bar">Logged in as <b>{{ user.username }}</b> (your user ID is <b>{{ user.id }}</b>)
+     &nbsp;|&nbsp; <a href="/katherine/logout">Log out</a></div>
+
+  <div class="bar" style="margin-top:12px">
+    <b>Attack:</b> request user ID
+    <input id="tid" type="number" min="1" value="2" style="width:70px">
+    <button onclick="attack()">Send to both versions</button>
+    <small>(Same request, same logged-in user, different server code.)</small>
+  </div>
+
+  <div class="cols">
+    <div class="col vuln">
+      <h3>Vulnerable</h3>
+      <code id="u1">GET /katherine/vulnerable/profile/?</code>
+      <pre id="r1">(click the button)</pre>
+      <a id="l1" href="/katherine/vulnerable/profile/{{ user.id }}" target="_blank">Open in browser (try editing the number in the URL)</a>
+    </div>
+    <div class="col fix">
+      <h3>Mitigated</h3>
+      <code id="u2">GET /katherine/mitigated/profile/?</code>
+      <pre id="r2">(click the button)</pre>
+      <a id="l2" href="/katherine/mitigated/profile/{{ user.id }}" target="_blank">Open in browser (try editing the number in the URL)</a>
+    </div>
+  </div>
+
+<script>
+function show(id, url) {
+  document.getElementById('u' + id).textContent = 'GET ' + url;
+  fetch(url + '?format=json', {credentials: 'same-origin'}).then(function (res) {
+    return res.text().then(function (body) {
+      var out;
+      try { out = JSON.stringify(JSON.parse(body), null, 2); } catch (e) { out = body; }
+      document.getElementById('r' + id).textContent = 'HTTP ' + res.status + '\n' + out;
+    });
+  });
+}
+function attack() {
+  var n = document.getElementById('tid').value;
+  show(1, '/katherine/vulnerable/profile/' + n);
+  show(2, '/katherine/mitigated/profile/' + n);
+}
+</script>
+{% endif %}
+</body></html>
