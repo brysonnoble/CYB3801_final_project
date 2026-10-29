@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bryson &mdash; Mitigated</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    .banner { background: #e8f8f0; border-left: 5px solid #27ae60; padding: .6rem 1rem; border-radius: 6px; }
+    input { padding: .4rem; margin: .2rem 0; }
+    pre { background: #f4f4f4; padding: .8rem; border-radius: 6px; overflow-x: auto; }
+    .comment { border-bottom: 1px solid #eee; padding: .4rem 0; }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+    a { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; Home</a> | <a href="/bryson/vulnerable">See vulnerable version</a></p>
+  <div class="banner"><strong>MITIGATED.</strong> Sensitive data lives in SQLite
+     server-side; the browser only holds an <code>httpOnly</code> session id.</div>
+
+  {% if error %}<p style="color:#c0392b">Invalid credentials.</p>{% endif %}
+
+  {% if user %}
+    <h2>Welcome, {{ user["username"] }}</h2>
+    <p>You are logged in via a server-side session. <a href="/bryson/logout">Log out</a></p>
+    <h3>Your profile (fetched from the server each time)</h3>
+    <pre id="profile">Loading...</pre>
+  {% else %}
+    <h2>Log in</h2>
+    <form method="POST" action="/bryson/mitigated">
+      <input name="username" placeholder="username" value="alice"><br>
+      <input name="password" type="password" placeholder="password" value="password123"><br>
+      <button type="submit">Log in</button>
+    </form>
+  {% endif %}
+
+  <h2>Public comment wall</h2>
+  <form method="POST" action="/bryson/comment">
+    <input type="hidden" name="next" value="/bryson/mitigated">
+    <input name="body" size="50" placeholder="Leave a comment...">
+    <button type="submit">Post</button>
+  </form>
+  <p style="color:#777;font-size:.9rem">The same payload from the vulnerable page
+     is now rendered as inert text, and even if script ran, <code>document.cookie</code>
+     cannot see the <code>httpOnly</code> session and <code>localStorage</code> holds nothing.</p>
+  <div id="comments">
+    {% for c in comments %}
+      <div class="comment">{{ c }}</div>  {# MITIGATED: auto-escaped by Jinja #}
+    {% endfor %}
+  </div>
+
+  <script>
+    // No sensitive data is stored client-side; fetch it from the server, which
+    // authorizes the request using the httpOnly session cookie.
+    {% if user %}
+    fetch("/bryson/mitigated/profile")
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(p => {
+        document.getElementById("profile").textContent =
+          JSON.stringify(p, null, 2) +
+          "\n\ndocument.cookie (no session visible): " + (document.cookie || "<empty>") +
+          "\nlocalStorage.profile: " + (localStorage.getItem("profile") || "<empty>");
+      })
+      .catch(() => { document.getElementById("profile").textContent = "Could not load profile."; });
+    {% endif %}
+  </script>
+</body>
+</html>

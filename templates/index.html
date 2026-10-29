@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CYB3801 Final Project</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    h1 { margin-bottom: .25rem; }
+    .team { color: #555; margin-top: 0; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
+    .vuln { border-left: 5px solid #c0392b; }
+    .mit  { border-left: 5px solid #27ae60; }
+    a.btn { display: inline-block; margin-right: .5rem; text-decoration: none; padding: .4rem .8rem; border-radius: 6px; background: #2c3e50; color: #fff; }
+    .todo { color: #999; font-style: italic; }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>CYB3801 Final Project</h1>
+  <p class="team">Bryson Noble &middot; Katherine Kennedy &middot; Neva Ildem</p>
+  <p>A deliberately vulnerable web app paired with a mitigated version for each
+     vulnerability. Demo logins: <code>alice / password123</code> or
+     <code>bob / hunter2</code>.</p>
+
+  <div class="card vuln">
+    <h2>Bryson Noble &mdash; Sensitive data in localStorage &amp; cookies (XSS)</h2>
+    <p>The vulnerable page stores a logged-in user's sensitive profile in
+       <code>localStorage</code> and a JavaScript-readable cookie, letting a
+       stored-XSS payload steal it. The mitigated page keeps the data in SQLite
+       behind an <code>httpOnly</code> session cookie.</p>
+    <a class="btn" href="/bryson/vulnerable">Vulnerable</a>
+    <a class="btn" href="/bryson/mitigated">Mitigated</a>
+  </div>
+
+  <div class="card">
+    <h2>Katherine Kennedy &mdash; Insecure Direct Object Reference (IDOR)</h2>
+    <p class="todo">Coming soon.</p>
+  </div>
+
+  <div class="card">
+    <h2>Neva Ildem &mdash; SQL Injection</h2>
+    <p class="todo">Coming soon.</p>
+  </div>
+</body>
+</html>
