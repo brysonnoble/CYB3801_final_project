@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neva &mdash; Mitigated (SQL Injection)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    .banner { background: #eafaf1; border-left: 5px solid #27ae60; padding: .6rem 1rem; border-radius: 6px; }
+    input { padding: .4rem; margin: .2rem 0; }
+    button { padding: .4rem .8rem; }
+    table { border-collapse: collapse; margin-top: .5rem; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: .35rem .6rem; text-align: left; font-size: .95rem; }
+    th { background: #f4f4f4; }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+    a { color: #2c3e50; }
+    .err { color: #c0392b; }
+    .hint { color: #777; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; Home</a> | <a href="/neva/vulnerable">See vulnerable version</a></p>
+  <div class="banner"><strong>MITIGATED.</strong> Parameterized query +
+     input validation.</div>
+
+  <h2>Log in</h2>
+  <form method="POST">
+    <input name="username" placeholder="username" value="alice"><br>
+    <input name="password" type="password" placeholder="password"><br>
+    <button type="submit">Log in</button>
+  </form>
+  <p class="hint">Try the same injection strings from the vulnerable page
+     (<code>alice' --</code> or <code>' OR 1=1 --</code>). Here they're either
+     rejected by validation or treated as a literal username that matches
+     nothing.</p>
+
+  {% if error %}
+    <h3>Result</h3>
+    <p class="err">{{ error }}</p>
+  {% elif result is not none %}
+    <h3>Logged in</h3>
+    {% if result %}
+      <table>
+        <tr>{% for col in cols %}<th>{{ col }}</th>{% endfor %}</tr>
+        {% for row in result %}
+          <tr>{% for col in cols %}<td>{{ row[col] }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  {% endif %}
+</body>
+</html>

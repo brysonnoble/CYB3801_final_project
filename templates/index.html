@@ -37,9 +37,14 @@
     <h2>Katherine Kennedy &mdash; Insecure Direct Object Reference (IDOR)</h2>
       <a class="btn" href="/katherine">Katherine: IDOR demo</a>  </div>
 
-  <div class="card">
+   <div class="card vuln">
     <h2>Neva Ildem &mdash; SQL Injection</h2>
-    <p class="todo">Coming soon.</p>
+    <p>The vulnerable login pastes user input directly into a SQL query, so a
+       crafted username can bypass the password check and dump every user's
+       <code>ssn</code> and <code>balance</code>. The mitigated login uses a
+       parameterized query and input validation.</p>
+    <a class="btn" href="/neva/vulnerable">Vulnerable</a>
+    <a class="btn" href="/neva/mitigated">Mitigated</a>
   </div>
 </body>
 </html>

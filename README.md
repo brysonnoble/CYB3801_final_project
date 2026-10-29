@@ -58,6 +58,30 @@ text.
 **Mitigated** (`/katherine/mitigated/profile/<id>`): a server-side authorization check compares the ID in the URL to the user ID stored in the server-side session. A mismatch returns `403 Forbidden` before any other user's data is loaded.
 
 Try both versions side-by-side at `/katherine`.
+## Neva Ildem — SQL Injection
+
+**Vulnerable** (`/neva/vulnerable`): the login query is built by concatenating
+user input directly into the SQL string:
+
+```python
+query = ("SELECT username, email, ssn, balance FROM users "
+         "WHERE username = '" + username + "' AND password = '" + password + "'")
+```
+
+Because the input becomes part of the command, a crafted username in the login
+form (any password) rewrites the query:
+
+- `alice' --` closes the username string and comments out the password check,
+  logging in as alice without her password.
+- `' OR 1=1 --` makes the WHERE clause always true, dumping every user's
+  record — usernames, emails, SSNs, and balances.
+
+**Mitigated** (`/neva/mitigated`): the query uses a parameterized statement
+(`WHERE username = ? AND password = ?`) via the shared `find_user` helper, so
+input is treated as data and can never alter the command. As defense in depth,
+usernames are validated against `^[A-Za-z0-9_]{1,32}$` and rejected if they
+contain quotes, spaces, or dashes. The same payloads are now rejected, while
+valid credentials still log in normally.
 
 ## For teammates
 
