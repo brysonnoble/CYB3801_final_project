@@ -6,11 +6,9 @@ Team: Bryson Noble, Katherine Kennedy, Neva Ildem
 Each team member demonstrates one web vulnerability and its mitigation:
   - Bryson Noble   : Sensitive data in localStorage/cookies -> XSS theft.
                      Mitigated by storing data server-side in SQLite with an
-                     httpOnly session cookie.  (IMPLEMENTED BELOW)
-  - Katherine Kennedy : Insecure Direct Object Reference (IDOR).   [TODO]
-  - Neva Ildem        : SQL Injection.                             [TODO]
-
-Teammates: add your routes in the clearly marked sections at the bottom.
+                     httpOnly session cookie.                      [DONE]
+  - Katherine Kennedy : Insecure Direct Object Reference (IDOR).   [DONE]
+  - Neva Ildem        : SQL Injection.                             [DONE]
 """
 
 import os

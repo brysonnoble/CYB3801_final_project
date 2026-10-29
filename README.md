@@ -9,7 +9,7 @@ each vulnerability. Built with Flask and SQLite.
 | --- | --- | --- | --- |
 | Bryson Noble | Sensitive data stored in `localStorage` + JS-readable cookie, stolen via XSS | Store data server-side in SQLite; opaque `httpOnly` session cookie; escape user input | Done |
 | Katherine Kennedy | Insecure Direct Object Reference (IDOR) | Server-side authorization checks | Done |
-| Neva Ildem | SQL Injection | Parameterized queries + input validation | TODO |
+| Neva Ildem | SQL Injection | Parameterized queries + input validation | Done |
 
 ## Running it
 
@@ -29,7 +29,7 @@ python app.py
 
 Then open http://localhost:5000.
 
-Demo logins: `alice / password123` or `bob / hunter2`.
+Demo logins: `alice / password123`, `bob / hunter2`, or `carol / letmein`.
 
 ## Bryson Noble — Sensitive data in localStorage & cookies (XSS)
 
@@ -82,9 +82,3 @@ input is treated as data and can never alter the command. As defense in depth,
 usernames are validated against `^[A-Za-z0-9_]{1,32}$` and rejected if they
 contain quotes, spaces, or dashes. The same payloads are now rejected, while
 valid credentials still log in normally.
-
-## For teammates
-
-Add your routes in the clearly marked sections at the bottom of `app.py` and
-drop any templates in `templates/`. The SQLite database lives in the directory
-named by `BURPLAB_STATE` (`/state` in Docker).
